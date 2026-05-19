@@ -1,0 +1,18 @@
+{
+  "name": "Dual Gregorian-Hebrew Calendar",
+  "short_name": "DualCal",
+  "description": "A premium interactive Gregorian-Hebrew calendar visualizer with moon phases and sunset-split daily transition mapping.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

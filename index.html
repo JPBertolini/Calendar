@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Dual Gregorian-Hebrew Calendar</title>
+  
+  <!-- PWA & iOS Safari Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DualCal">
+  <meta name="theme-color" content="#020617">
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Google Fonts for Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              950: '#020617',
+              900: '#0f172a',
+              800: '#1e293b',
+              700: '#334155',
+            },
+            amber: {
+              500: '#f59e0b',
+              400: '#fbbf24',
+              300: '#fcd34d',
+            },
+            emerald: {
+              500: '#10b981',
+              400: '#34d399',
+            },
+            indigo: {
+              500: '#6366f1',
+              400: '#818cf8',
+            }
+          },
+          fontFamily: {
+            sans: ['Outfit', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'pulse-subtle': 'pulseSubtle 2.5s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'scale(0.98) translateY(4px)' },
+              '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+            },
+            slideUp: {
+              '0%': { opacity: '0', transform: 'translateY(24px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            pulseSubtle: {
+              '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+              '50%': { opacity: '0.85', transform: 'scale(0.98)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none antialiased overflow-x-hidden pb-safe">
+
+  <!-- Main Shell -->
+  <div class="flex-1 w-full max-w-lg mx-auto flex flex-col px-4 pt-4 pb-8 md:max-w-4xl md:px-6">
+    
+    <!-- Top PWA Header / Brand Bar -->
+    <header class="relative z-50 flex flex-col gap-2 mb-4 animate-fade-in">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 id="title-hebrew" class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 via-emerald-400 to-indigo-400 bg-clip-text text-transparent">
+            Loading Month...
+          </h1>
+          <p id="subtitle-gregorian" class="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
+            Loading Dates...
+          </p>
+        </div>
+        
+        <!-- Filter Icon Button -->
+        <button id="btn-filter" class="p-2.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900 active:scale-95 transition-all duration-200 border border-slate-800 backdrop-blur-md bg-slate-900/60" aria-label="Toggle Filters">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Interactive Collapsible Panel -->
+      <div id="filter-panel" class="hidden absolute right-0 top-14 z-50 w-56 p-3 bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col gap-2.5 animate-slide-up">
+        <!-- Month selector -->
+        <div class="flex flex-col gap-1">
+          <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Hebrew Month</label>
+          <div class="relative">
+            <select id="select-month" class="w-full bg-slate-950/80 text-slate-200 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500/50 appearance-none cursor-pointer">
+              <!-- Options populated dynamically -->
+            </select>
+            <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-500">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+          </div>
+        </div>
+        <!-- Year selector -->
+        <div class="flex flex-col gap-1">
+          <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Hebrew Year</label>
+          <div class="relative">
+            <select id="select-year" class="w-full bg-slate-950/80 text-slate-200 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500/50 appearance-none cursor-pointer">
+              <!-- Options populated dynamically -->
+            </select>
+            <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-500">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Grid Container -->
+    <main class="flex-1 flex flex-col gap-4 animate-slide-up">
+      
+      <!-- Weekday Headers (Primary axis Sunday to Saturday) -->
+      <div class="grid grid-cols-7 gap-1 text-center bg-slate-900/40 py-2 px-1 rounded-xl border border-slate-900/80 backdrop-blur-sm">
+        <div class="text-[10px] font-extrabold text-amber-400">SU</div>
+        <div class="text-[10px] font-extrabold text-slate-400">MO</div>
+        <div class="text-[10px] font-extrabold text-slate-400">TU</div>
+        <div class="text-[10px] font-extrabold text-slate-400">WE</div>
+        <div class="text-[10px] font-extrabold text-slate-400">TH</div>
+        <div class="text-[10px] font-extrabold text-emerald-400">FR</div>
+        <div class="text-[10px] font-extrabold text-indigo-400">SH</div>
+      </div>
+
+      <!-- Calendar Month Days Grid -->
+      <div id="calendar-grid" class="grid grid-cols-7 gap-1.5 flex-1 min-h-[300px] md:min-h-[420px]">
+        <!-- Days populated dynamically by app.js -->
+      </div>
+
+      <!-- Quick Stats / Legend Panel -->
+      <section class="grid grid-cols-3 gap-2 bg-slate-900/35 border border-slate-900/85 p-3 rounded-2xl text-[11px] text-slate-400 backdrop-blur-md">
+        <div class="flex items-center gap-1.5 justify-center border-r border-slate-800/80">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-500/70 inline-block shadow-sm"></span>
+          <span>Holidays</span>
+        </div>
+        <div class="flex items-center gap-1.5 justify-center border-r border-slate-800/80">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/70 inline-block shadow-sm"></span>
+          <span>Rosh Chodesh</span>
+        </div>
+        <div class="flex items-center gap-1.5 justify-center">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500/70 inline-block shadow-sm"></span>
+          <span>Fast Days</span>
+        </div>
+      </section>
+
+      <!-- Day Details & Sunset Timeline Drawer -->
+      <section id="day-view-container" class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-5 backdrop-blur-lg shadow-2xl flex flex-col gap-4 animate-slide-up duration-300">
+        
+        <!-- Header Info -->
+        <div class="flex justify-between items-start border-b border-slate-800/80 pb-4">
+          <div>
+            <h2 id="day-view-title-hebrew" class="text-xl font-extrabold text-slate-100">
+              1 Sivan 5786
+            </h2>
+            <h3 id="day-view-title-gregorian" class="text-sm font-semibold text-slate-300">
+              Sunday, May 17, 2026
+            </h3>
+          </div>
+          
+          <!-- Selected Day Badges -->
+          <div class="flex items-stretch gap-2">
+            <!-- Selected Day Moon Phase Badge -->
+            <div id="day-view-moon" class="flex flex-col items-center justify-center gap-1 bg-white/5 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-md min-w-[76px]">
+              <span id="day-view-moon-icon" class="text-2xl leading-none">🌑</span>
+              <span id="day-view-moon-text" class="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-center">New Moon</span>
+            </div>
+            
+            <!-- Selected Day Zodiac Badge -->
+            <div id="day-view-zodiac" class="flex flex-col items-center justify-center gap-1 bg-white/5 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-md min-w-[76px]">
+              <span id="day-view-zodiac-icon" class="text-2xl leading-none">♉</span>
+              <span id="day-view-zodiac-text" class="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-center">Taurus</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sunset Transition Visualized Timeline -->
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Sunset Boundary Transition</h4>
+          </div>
+          
+          <div class="relative grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Center dividing line for desktop -->
+            <div class="hidden md:block absolute left-1/2 top-4 bottom-4 w-px bg-slate-800/80"></div>
+            
+            <!-- Night Section (Sunset G-1 to Sunrise G) -->
+            <div class="relative bg-gradient-to-br from-indigo-950/40 to-slate-950/60 p-4 rounded-2xl border border-indigo-500/10 flex flex-col gap-2">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Night (First Half of Day)</span>
+                <span id="label-sunset-prev" class="text-[10px] text-slate-400 font-mono">Sunset (May 16) to Sunrise (May 17)</span>
+              </div>
+              <p id="timeline-night-status" class="text-xs text-slate-300 leading-relaxed font-light mt-1">
+                Starting at sunset on the previous evening.
+              </p>
+              <div id="timeline-night-events" class="flex flex-col gap-1.5 mt-2">
+                <!-- Night specific events added dynamically -->
+              </div>
+            </div>
+
+            <!-- Day Section (Sunrise G to Sunset G) -->
+            <div class="relative bg-gradient-to-br from-amber-950/20 to-slate-950/60 p-4 rounded-2xl border border-amber-500/10 flex flex-col gap-2">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Day (Second Half of Day)</span>
+                <span id="label-sunrise-today" class="text-[10px] text-slate-400 font-mono">Sunrise to Sunset (May 17)</span>
+              </div>
+              <p id="timeline-day-status" class="text-xs text-slate-300 leading-relaxed font-light mt-1">
+                Spanning the daylight hours until the next day begins.
+              </p>
+              <div id="timeline-day-events" class="flex flex-col gap-1.5 mt-2">
+                <!-- Day specific events added dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Eclipse Warning Alert (Shown below transition grid) -->
+        <div id="day-eclipse-warning" class="hidden text-xs bg-rose-500/10 border border-rose-500/25 text-slate-200 px-3 py-2 rounded-xl backdrop-blur-md items-center gap-2 mt-2">
+          <span class="text-base text-rose-500 leading-none">🌑</span>
+          <span id="day-eclipse-text">Partial Solar Eclipse occurs on this Rosh Chodesh.</span>
+        </div>
+
+        <!-- Planetary Positions Card -->
+        <div class="bg-slate-950/40 border border-slate-900/90 rounded-2xl p-4 flex flex-col gap-3">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="text-indigo-400 text-sm leading-none">🌌</span>
+            Planetary Positions
+          </h4>
+          <div id="day-planets-list" class="flex flex-col gap-2.5 text-xs text-slate-300">
+            <!-- Dynamic planetary positions rows loaded here -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Astronomy Engine from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+  <!-- Core Hebcal Bundle from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@hebcal/core/dist/bundle.min.js"></script>
+  <!-- Main JavaScript File -->
+  <script src="app.js"></script>
+</body>
+</html>
