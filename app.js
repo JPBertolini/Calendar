@@ -178,19 +178,64 @@ function getMoonPhaseForDay(day, totalDays) {
 }
 
 const ZODIAC_SIGNS = [
-  { name: 'Aries', emoji: '♈', startMonth: 3, startDay: 21, endMonth: 4, endDay: 19 },
-  { name: 'Taurus', emoji: '♉', startMonth: 4, startDay: 20, endMonth: 5, endDay: 20 },
-  { name: 'Gemini', emoji: '♊', startMonth: 5, startDay: 21, endMonth: 6, endDay: 20 },
-  { name: 'Cancer', emoji: '♋', startMonth: 6, startDay: 21, endMonth: 7, endDay: 22 },
-  { name: 'Leo', emoji: '♌', startMonth: 7, startDay: 23, endMonth: 8, endDay: 22 },
-  { name: 'Virgo', emoji: '♍', startMonth: 8, startDay: 23, endMonth: 9, endDay: 22 },
-  { name: 'Libra', emoji: '♎', startMonth: 9, startDay: 23, endMonth: 10, endDay: 22 },
-  { name: 'Scorpio', emoji: '♏', startMonth: 10, startDay: 23, endMonth: 11, endDay: 21 },
-  { name: 'Sagittarius', emoji: '♐', startMonth: 11, startDay: 22, endMonth: 12, endDay: 21 },
-  { name: 'Capricorn', emoji: '♑', startMonth: 12, startDay: 22, endMonth: 1, endDay: 19 },
-  { name: 'Aquarius', emoji: '♒', startMonth: 1, startDay: 20, endMonth: 2, endDay: 18 },
-  { name: 'Pisces', emoji: '♓', startMonth: 2, startDay: 19, endMonth: 3, endDay: 20 }
+  { name: 'Aries', emoji: '♈' },
+  { name: 'Taurus', emoji: '♉' },
+  { name: 'Gemini', emoji: '♊' },
+  { name: 'Cancer', emoji: '♋' },
+  { name: 'Leo', emoji: '♌' },
+  { name: 'Virgo', emoji: '♍' },
+  { name: 'Libra', emoji: '♎' },
+  { name: 'Scorpio', emoji: '♏' },
+  { name: 'Sagittarius', emoji: '♐' },
+  { name: 'Capricorn', emoji: '♑' },
+  { name: 'Aquarius', emoji: '♒' },
+  { name: 'Pisces', emoji: '♓' }
 ];
+
+/** Geocentric ecliptic longitude (tropical, of date) in degrees [0, 360). */
+function getGeocentricEclipticLongitude(bodyId, date) {
+  if (bodyId === 'Moon') {
+    const moon = Astronomy.EclipticGeoMoon(date);
+    return ((moon.lon % 360) + 360) % 360;
+  }
+  if (bodyId === 'Sun') {
+    return Astronomy.SunPosition(date).elon;
+  }
+  const time = Astronomy.MakeTime(date);
+  const vec = Astronomy.GeoVector(bodyId, time, true);
+  return ((Astronomy.Ecliptic(vec).elon % 360) + 360) % 360;
+}
+
+function getZodiacFromLongitude(longitude) {
+  const signIndex = Math.floor(longitude / 30) % 12;
+  return ZODIAC_SIGNS[signIndex];
+}
+
+/** Geocentric zodiac sign for a body as seen from Earth (default: Moon). */
+function getGeocentricZodiacSign(date, bodyId = 'Moon') {
+  return getZodiacFromLongitude(getGeocentricEclipticLongitude(bodyId, date));
+}
+
+/** True when a body enters a new geocentric sign during the given calendar day. */
+function isGeocentricSignIngressDay(date, bodyId = 'Moon') {
+  const startLon = getGeocentricEclipticLongitude(bodyId, date);
+  const endOfDay = new Date(date.getTime() + 86400000 - 1);
+  const endLon = getGeocentricEclipticLongitude(bodyId, endOfDay);
+  const startSign = Math.floor(startLon / 30);
+  const endSign = Math.floor(endLon / 30);
+  if (startSign !== endSign) return true;
+  const prevDay = new Date(date.getTime() - 86400000);
+  const prevLon = getGeocentricEclipticLongitude(bodyId, prevDay);
+  return Math.floor(prevLon / 30) !== startSign;
+}
+
+function formatZodiacPosition(longitude) {
+  const zodiac = getZodiacFromLongitude(longitude);
+  const rawDegrees = longitude % 30;
+  const degrees = Math.floor(rawDegrees);
+  const minutes = Math.round((rawDegrees - degrees) * 60);
+  return { zodiac, degrees, minutes };
+}
 
 const PLANETS_CONFIG = [
   { id: 'Sun', name: 'Sun', emoji: '☀️' },
@@ -204,32 +249,6 @@ const PLANETS_CONFIG = [
   { id: 'Neptune', name: 'Neptune', emoji: '♆' },
   { id: 'Pluto', name: 'Pluto', emoji: '♇' }
 ];
-
-function getZodiacSign(date) {
-  const month = date.getMonth() + 1; // 1-indexed
-  const day = date.getDate();
-
-  for (const z of ZODIAC_SIGNS) {
-    if (z.startMonth === z.endMonth) {
-      if (month === z.startMonth && day >= z.startDay && day <= z.endDay) {
-        return z;
-      }
-    } else {
-      if (z.startMonth > z.endMonth) {
-        // Crosses New Year boundary
-        if ((month === z.startMonth && day >= z.startDay) || (month === z.endMonth && day <= z.endDay)) {
-          return z;
-        }
-      } else {
-        // Crosses standard month boundary
-        if ((month === z.startMonth && day >= z.startDay) || (month === z.endMonth && day <= z.endDay)) {
-          return z;
-        }
-      }
-    }
-  }
-  return null;
-}
 
 // --- INITIALIZATION ---
 
@@ -520,17 +539,13 @@ function renderCalendar() {
     // Right group: Zodiac Sign Badge
     const rightGroup = document.createElement('div');
     rightGroup.className = 'flex items-center';
-    const zodiac = getZodiacSign(greg);
-    if (zodiac) {
-      // Show badge ONLY if it is the first day of the zodiac sign
-      const isZodiacStartDay = (greg.getMonth() + 1 === zodiac.startMonth && greg.getDate() === zodiac.startDay);
-      if (isZodiacStartDay) {
-        const zodiacSpan = document.createElement('span');
-        zodiacSpan.className = 'text-[11px] leading-none opacity-60';
-        zodiacSpan.textContent = zodiac.emoji;
-        zodiacSpan.title = zodiac.name;
-        rightGroup.appendChild(zodiacSpan);
-      }
+    if (isGeocentricSignIngressDay(greg, 'Moon')) {
+      const zodiac = getGeocentricZodiacSign(greg, 'Moon');
+      const zodiacSpan = document.createElement('span');
+      zodiacSpan.className = 'text-[11px] leading-none opacity-60';
+      zodiacSpan.textContent = zodiac.emoji;
+      zodiacSpan.title = `Moon enters ${zodiac.name}`;
+      rightGroup.appendChild(zodiacSpan);
     }
     row3.appendChild(rightGroup);
     
@@ -587,11 +602,9 @@ function renderDayDetails(hd) {
   dayViewMoonText.textContent = moon.text;
 
   // 3b. Zodiac Details
-  const zodiac = getZodiacSign(gregDate);
-  if (zodiac) {
-    dayViewZodiacIcon.textContent = zodiac.emoji;
-    dayViewZodiacText.textContent = zodiac.name;
-  }
+  const moonZodiac = getGeocentricZodiacSign(gregDate, 'Moon');
+  dayViewZodiacIcon.textContent = moonZodiac.emoji;
+  dayViewZodiacText.textContent = moonZodiac.name;
 
   // 6. Partition Events into Sunset-Transition Timeline (Night vs Day)
   timelineNightEvents.innerHTML = '';
@@ -682,25 +695,12 @@ function renderDayDetails(hd) {
     dayEclipseWarning.classList.remove('flex');
   }
 
-  // 8. Planetary Positions rendering using astronomy-engine
+  // 8. Planetary Positions (geocentric ecliptic longitudes via astronomy-engine)
   dayPlanetsList.innerHTML = '';
   try {
     PLANETS_CONFIG.forEach(planet => {
-      // Calculate ecliptic longitude of date using astronomy-engine
-      let longitude;
-      if (planet.id === 'Sun') {
-        // Geocentric longitude of the Sun is Earth heliocentric longitude + 180
-        const earthLong = Astronomy.EclipticLongitude('Earth', gregDate);
-        longitude = (earthLong + 180) % 360;
-      } else {
-        longitude = Astronomy.EclipticLongitude(planet.id, gregDate);
-      }
-      const signIndex = Math.floor(longitude / 30);
-      const zodiac = ZODIAC_SIGNS[signIndex];
-      
-      const rawDegrees = longitude % 30;
-      const degrees = Math.floor(rawDegrees);
-      const minutes = Math.round((rawDegrees - degrees) * 60);
+      const longitude = getGeocentricEclipticLongitude(planet.id, gregDate);
+      const { zodiac, degrees, minutes } = formatZodiacPosition(longitude);
 
       const row = document.createElement('div');
       row.className = 'flex justify-between items-center bg-white/[0.02] border border-white/[0.04] p-2 rounded-xl backdrop-blur-sm';
