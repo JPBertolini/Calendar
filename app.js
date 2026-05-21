@@ -211,22 +211,17 @@ function getZodiacFromLongitude(longitude) {
   return ZODIAC_SIGNS[signIndex];
 }
 
-/** Geocentric zodiac sign for a body as seen from Earth (default: Moon). */
-function getGeocentricZodiacSign(date, bodyId = 'Moon') {
+/** Geocentric zodiac sign for a body as seen from Earth. */
+function getGeocentricZodiacSign(date, bodyId) {
   return getZodiacFromLongitude(getGeocentricEclipticLongitude(bodyId, date));
 }
 
-/** True when a body enters a new geocentric sign during the given calendar day. */
-function isGeocentricSignIngressDay(date, bodyId = 'Moon') {
-  const startLon = getGeocentricEclipticLongitude(bodyId, date);
-  const endOfDay = new Date(date.getTime() + 86400000 - 1);
-  const endLon = getGeocentricEclipticLongitude(bodyId, endOfDay);
-  const startSign = Math.floor(startLon / 30);
-  const endSign = Math.floor(endLon / 30);
-  if (startSign !== endSign) return true;
+/** True on the first calendar day a body is in a new geocentric sign (vs previous day start). */
+function isGeocentricSignIngressDay(date, bodyId) {
   const prevDay = new Date(date.getTime() - 86400000);
-  const prevLon = getGeocentricEclipticLongitude(bodyId, prevDay);
-  return Math.floor(prevLon / 30) !== startSign;
+  const startSign = Math.floor(getGeocentricEclipticLongitude(bodyId, date) / 30);
+  const prevSign = Math.floor(getGeocentricEclipticLongitude(bodyId, prevDay) / 30);
+  return startSign !== prevSign;
 }
 
 function formatZodiacPosition(longitude) {
@@ -539,12 +534,12 @@ function renderCalendar() {
     // Right group: Zodiac Sign Badge
     const rightGroup = document.createElement('div');
     rightGroup.className = 'flex items-center';
-    if (isGeocentricSignIngressDay(greg, 'Moon')) {
-      const zodiac = getGeocentricZodiacSign(greg, 'Moon');
+    if (isGeocentricSignIngressDay(greg, 'Sun')) {
+      const zodiac = getGeocentricZodiacSign(greg, 'Sun');
       const zodiacSpan = document.createElement('span');
       zodiacSpan.className = 'text-[11px] leading-none opacity-60';
       zodiacSpan.textContent = zodiac.emoji;
-      zodiacSpan.title = `Moon enters ${zodiac.name}`;
+      zodiacSpan.title = zodiac.name;
       rightGroup.appendChild(zodiacSpan);
     }
     row3.appendChild(rightGroup);
@@ -602,9 +597,9 @@ function renderDayDetails(hd) {
   dayViewMoonText.textContent = moon.text;
 
   // 3b. Zodiac Details
-  const moonZodiac = getGeocentricZodiacSign(gregDate, 'Moon');
-  dayViewZodiacIcon.textContent = moonZodiac.emoji;
-  dayViewZodiacText.textContent = moonZodiac.name;
+  const sunZodiac = getGeocentricZodiacSign(gregDate, 'Sun');
+  dayViewZodiacIcon.textContent = sunZodiac.emoji;
+  dayViewZodiacText.textContent = sunZodiac.name;
 
   // 6. Partition Events into Sunset-Transition Timeline (Night vs Day)
   timelineNightEvents.innerHTML = '';
